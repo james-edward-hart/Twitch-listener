@@ -2,6 +2,8 @@ from flask import Flask, request, jsonify
 import subprocess
 import json
 
+pip install --upgrade pip
+
 app = Flask(__name__)
 
 @app.route('/get_hls_url', methods=['GET'])
