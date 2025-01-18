@@ -1,39 +1,34 @@
-import werkzeug.urls
-from urllib.parse import quote
-
-# Patch werkzeug.urls to include a url_quote function
-werkzeug.urls.url_quote = quote
-
+import streamlink
 from flask import Flask, request, jsonify
-import subprocess
-import json
+import re
 
 app = Flask(__name__)
 
-@app.route('/get_hls_url', methods=['GET'])
-def get_hls_url():
-    channel_name = request.args.get('channel')
-    if not channel_name:
-        return jsonify({"error": "Channel name is required"}), 400
+@app.route("/get-stream", methods=["POST"])
+def get_stream():
+    data = request.get_json()
+    twitch_username = data.get("username", "").strip()
+
+    if not twitch_username:
+        return jsonify({"error": "No Twitch username provided"}), 400
+
+    # Construct the Twitch stream URL from the username
+    twitch_url = f"https://www.twitch.tv/{twitch_username}"
 
     try:
-        # Run Streamlink to fetch the HLS URL for the provided channel
-        result = subprocess.run(
-            ["streamlink", "--json", f"https://twitch.tv/{channel_name}", "best"],
-            capture_output=True,
-            text=True
-        )
-
-        if result.returncode != 0:
-            return jsonify({"error": "Failed to fetch HLS URL", "details": result.stderr}), 500
-
-        # Parse the JSON response from Streamlink
-        stream_data = json.loads(result.stdout)
-        hls_url = list(stream_data["streams"].values())[0]["url"]
-        return jsonify({"hls_url": hls_url})
-
+        # Get the available streams from Streamlink
+        streams = streamlink.streams('hls', twitch_url)
+        
+        # Get the best quality stream (you can adjust this if necessary)
+        best_stream = streams.get("worst")
+        
+        if best_stream:
+            return jsonify({"stream_url": best_stream.url})
+        else:
+            return jsonify({"error": "No stream found for the provided username"}), 404
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
-if __name__ == '__main__':
-    app.run(host='0.0.0.0', port=5000)
+
+if __name__ == "__main__":
+    app.run(host="0.0.0.0", port=5000)
