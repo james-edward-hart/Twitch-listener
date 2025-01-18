@@ -1,3 +1,7 @@
+import werkzeug.urls
+from urllib.parse import quote
+# Patch werkzeug.urls to include a url_quote function
+werkzeug.urls.url_quote = quote
 import streamlink
 from flask import Flask, request, jsonify
 import re
